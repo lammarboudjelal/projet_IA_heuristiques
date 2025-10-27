@@ -1,4 +1,6 @@
 from heapq import heappush, heappop
+import matplotlib.pyplot as plt
+from collections import defaultdict
 
 # --- Configuration du taquin ---
 ETAT_OBJECTIF = (
@@ -67,6 +69,53 @@ def afficher_taquin(etat):
     print("-------")
 
 
+def lire_fichier_taquins(nom_fichier):
+    """
+    Lit plusieurs taquins depuis un fichier texte.
+    Chaque taquin est séparé par une ligne vide dans le fichier.
+    """
+    f = open(nom_fichier)
+    contenu = f.read()
+    blocs = contenu.split("\n\n") # Séparation de chaque taquin
+    taquins = []
+
+    for bloc in blocs:
+        lignes = []
+        # On parcourt chaque ligne du bloc (ex: "1 2 3")
+        for ligne in bloc.strip().split("\n"):
+            nombres = ligne.split() # ["1", "2", "3"]         
+            nombres_int = list(map(int, nombres))  # [1, 2, 3]
+            lignes.append(tuple(nombres_int)) # (1, 2, 3)
+        taquins.append(tuple(lignes)) # Un taquin = tuple de 3 lignes
+    f.close()
+    return taquins
+
+
+def tracer_graphe_moyen(valeurs):
+    """
+    Trace un graphique représentant la moyenne du nombre de coups restants 
+    pour chaque valeur d'heuristique (h).
+    """  
+    # On regroupe toutes les valeurs d (distance réelle) pour chaque h (heuristique)
+    groupes = defaultdict(list)
+    for h, d in valeurs:
+        groupes[h].append(d)
+
+    # On calcule la moyenne de chaque groupe
+    h_valeurs = sorted(groupes.keys())  # on trie les valeurs d'heuristique croissantes
+    moyennes = []
+    for h in h_valeurs:
+        moyenne_d = sum(groupes[h]) / len(groupes[h])
+        moyennes.append(moyenne_d)
+
+    # On trace la courbe moyenne
+    plt.plot(h_valeurs, moyennes, marker='o')
+    plt.xlabel("Heuristique (nombre de tuiles mal placées)")
+    plt.ylabel("Nombre moyen de coups restants (distance moyenne restante)")
+    plt.title("Lien entre heuristique et distance réelle moyenne")
+    plt.grid(True)
+    plt.show()  
+
 # --- Algorithme A* ---
 
 def a_etoile(initial):
@@ -95,27 +144,57 @@ def a_etoile(initial):
 
 
 def main():
-    initial = lire_taquin()
-    print("\nRésolution en cours...\n")
+    # --- Code initial : saisie manuelle ---
+    # initial = lire_taquin()
+    # print("\nRésolution en cours...\n")
 
-    chemin, final, taille_open, taille_visited = a_etoile(initial)
+    # chemin, final, taille_open, taille_visited = a_etoile(initial)
 
-    if chemin is None:
-        print("Aucune solution trouvée.")
-    else:
-        print(f"Solution trouvée en {len(chemin)} coups :\n")
-        etat_courant = initial
-        afficher_taquin(etat_courant)
+    # if chemin is None:
+    #     print("Aucune solution trouvée.")
+    # else:
+    #     print(f"Solution trouvée en {len(chemin)} coups :\n")
+    #     etat_courant = initial
+    #     afficher_taquin(etat_courant)
 
-        for move, etat_suivant in chemin:
-            print(f"Coup : {move} (heuristique = {heuristique(etat_suivant)})")
-            afficher_taquin(etat_suivant)
-            etat_courant = etat_suivant
+    #     for move, etat_suivant in chemin:
+    #         print(f"Coup : {move} (heuristique = {heuristique(etat_suivant)})")
+    #         afficher_taquin(etat_suivant)
+    #         etat_courant = etat_suivant
 
-        print("🎯 Taquin résolu !")
-        print(f"Nombre final d'états dans open : {taille_open}")
-        print(f"Nombre d'états visités : {taille_visited}")
+    #     print("🎯 Taquin résolu !")
+    #     print(f"Nombre final d'états dans open : {taille_open}")
+    #     print(f"Nombre d'états visités : {taille_visited}")
+    
+    # --- Nouvelle version : lecture automatique de plusieurs taquins
+    nom_fichier = "taquins.txt"
+    # nom_fichier = "taquin_test.txt" # Utilisé pour tester individuellement des taquins et afficher leur graphique
+    taquins = lire_fichier_taquins(nom_fichier)
+    print(f"{len(taquins)} taquin(s) chargé(s) depuis le fichier {nom_fichier}\n")
 
+    toutes_valeurs = [] 
+
+    for i, initial in enumerate(taquins, 1):
+        print(f"=== TAQUIN {i} ===")
+        afficher_taquin(initial)
+        print("Résolution en cours...\n")
+
+        chemin, final, taille_open, taille_visited = a_etoile(initial)
+
+        if chemin is None:
+            print("Aucune solution trouvée.\n")
+            continue
+
+        print(f"Solution trouvée en {len(chemin)} coups.\n")
+
+        # On collecte les couples (heuristique, coups restants)
+        for i, (move, etat_suivant) in enumerate(chemin, start=1):
+            h = heuristique(etat_suivant)
+            d = len(chemin) - i
+            toutes_valeurs.append((h, d))
+
+    # Une fois tous les taquins traités, on trace le graphique moyen
+    tracer_graphe_moyen(toutes_valeurs)
 
 if __name__ == "__main__":
     main()
