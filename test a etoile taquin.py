@@ -34,6 +34,14 @@ def trouver_vide(etat):
                 return i, j
 
 
+def trouver_coordonnee(valeur):
+    """Retourne la position finale d’une tuile donnée dans l’état objectif."""
+    for i in range(3):
+        for j in range(3):
+            if ETAT_OBJECTIF[i][j] == valeur:
+                return i, j
+            
+
 def deplacements_possibles(etat):
     """Retourne la liste des déplacements possibles à partir d'un état donné."""
     x, y = trouver_vide(etat)
@@ -59,6 +67,18 @@ def heuristique(etat):
             if etat[i][j] != 0 and etat[i][j] != ETAT_OBJECTIF[i][j]:
                 mal_places += 1
     return mal_places
+
+
+def heuristique_manhattan(etat):
+    """Heuristique 2 : somme des distances de Manhattan."""
+    distance = 0
+    for x in range(len(etat)):
+        for y in range(len(etat[x])):
+            valeur = etat[x][y]
+            if valeur != 0:
+                (goal_x, goal_y) = trouver_coordonnee(valeur)
+                distance += abs(x - goal_x) + abs(y - goal_y)
+    return distance
 
 
 def afficher_taquin(etat):
@@ -118,9 +138,9 @@ def tracer_graphe_moyen(valeurs):
 
 # --- Algorithme A* ---
 
-def a_etoile(initial):
+def a_etoile(initial, heuristique_fct): # On fait passer la fonction de l'heuristique utilisée en paramètre
     open_set = []
-    heappush(open_set, (heuristique(initial), 0, initial, []))
+    heappush(open_set, (heuristique_fct(initial), 0, initial, []))
     visited = set()
 
     while open_set:
@@ -137,64 +157,49 @@ def a_etoile(initial):
         for move, next_state in deplacements_possibles(etat):
             if next_state not in visited:
                 new_g = g + 1
-                h = heuristique(next_state)
+                h = heuristique_fct(next_state)
                 heappush(open_set, (new_g + h, new_g, next_state, chemin + [(move, next_state)]))
 
     return None, None, 0, len(visited)
 
 
-def main():
-    # --- Code initial : saisie manuelle ---
-    # initial = lire_taquin()
-    # print("\nRésolution en cours...\n")
-
-    # chemin, final, taille_open, taille_visited = a_etoile(initial)
-
-    # if chemin is None:
-    #     print("Aucune solution trouvée.")
-    # else:
-    #     print(f"Solution trouvée en {len(chemin)} coups :\n")
-    #     etat_courant = initial
-    #     afficher_taquin(etat_courant)
-
-    #     for move, etat_suivant in chemin:
-    #         print(f"Coup : {move} (heuristique = {heuristique(etat_suivant)})")
-    #         afficher_taquin(etat_suivant)
-    #         etat_courant = etat_suivant
-
-    #     print("🎯 Taquin résolu !")
-    #     print(f"Nombre final d'états dans open : {taille_open}")
-    #     print(f"Nombre d'états visités : {taille_visited}")
-    
-    # --- Nouvelle version : lecture automatique de plusieurs taquins
+def main():    
+    # --- Comparaison des deux heuristiques ---
     nom_fichier = "taquins.txt"
-    # nom_fichier = "taquin_test.txt" # Utilisé pour tester individuellement des taquins et afficher leur graphique
     taquins = lire_fichier_taquins(nom_fichier)
     print(f"{len(taquins)} taquin(s) chargé(s) depuis le fichier {nom_fichier}\n")
 
-    toutes_valeurs = [] 
+    gains_noeuds = [] # Liste pour stocker le gain de chaque taquin
 
     for i, initial in enumerate(taquins, 1):
         print(f"=== TAQUIN {i} ===")
         afficher_taquin(initial)
-        print("Résolution en cours...\n")
 
-        chemin, final, taille_open, taille_visited = a_etoile(initial)
+        # Résolution avec l’heuristique des tuiles mal placées
+        chemin1, final1, open1, visited1 = a_etoile(initial, heuristique)
+        noeuds1 = open1 + visited1 # nombre de nœuds explorés avec l’heuristique des tuiles mal placées
 
-        if chemin is None:
-            print("Aucune solution trouvée.\n")
-            continue
+        # Résolution avec la distance de Manhattan
+        chemin2, final2, open2, visited2 = a_etoile(initial, heuristique_manhattan)
+        noeuds2 = open2 + visited2 # nombre de nœuds explorés avec la distance de Manhattan
 
-        print(f"Solution trouvée en {len(chemin)} coups.\n")
+        if chemin1 is None or chemin2 is None : 
+            print("Aucune solution trouvée.")
+        else :
+            print("\nRésultats comparés :")
+            print(f"  - Tuiles mal placées : {len(chemin1)} coups, {noeuds1} nœuds explorés")
+            print(f"  - Distance Manhattan : {len(chemin2)} coups, {noeuds2} nœuds explorés")
+            
+            gain = ((noeuds1 - noeuds2) / noeuds1) * 100
+            print(f"=> Réduction du nombre de nœuds : {gain:.1f}%\n")
+            gains_noeuds.append(gain)  
 
-        # On collecte les couples (heuristique, coups restants)
-        for i, (move, etat_suivant) in enumerate(chemin, start=1):
-            h = heuristique(etat_suivant)
-            d = len(chemin) - i
-            toutes_valeurs.append((h, d))
+    # Calcul et affichage du gain moyen 
+    if gains_noeuds:
+        gain_moyen = sum(gains_noeuds) / len(gains_noeuds)
+        print(f"Gain moyen du nombre de nœuds explorés : {gain_moyen:.1f}%\n")
 
-    # Une fois tous les taquins traités, on trace le graphique moyen
-    tracer_graphe_moyen(toutes_valeurs)
+    print("Comparaison terminée pour tous les taquins.\n")
 
 if __name__ == "__main__":
     main()
