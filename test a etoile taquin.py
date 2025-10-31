@@ -111,7 +111,7 @@ def lire_fichier_taquins(nom_fichier):
     return taquins
 
 
-def tracer_graphe_moyen(valeurs):
+def tracer_graphe_moyen(valeurs, x_label, y_label):
     """
     Trace un graphique représentant la moyenne du nombre de coups restants 
     pour chaque valeur d'heuristique (h).
@@ -130,8 +130,8 @@ def tracer_graphe_moyen(valeurs):
 
     # On trace la courbe moyenne
     plt.plot(h_valeurs, moyennes, marker='o')
-    plt.xlabel("Heuristique (nombre de tuiles mal placées)")
-    plt.ylabel("Nombre moyen de coups restants (distance moyenne restante)")
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
     plt.title("Lien entre heuristique et distance réelle moyenne")
     plt.grid(True)
     plt.show()  
@@ -170,6 +170,7 @@ def main():
     print(f"{len(taquins)} taquin(s) chargé(s) depuis le fichier {nom_fichier}\n")
 
     gains_noeuds = [] # Liste pour stocker le gain de chaque taquin
+    valeurs_manhattan = []  # Pour tracer le graphique (h, distance réelle)
 
     for i, initial in enumerate(taquins, 1):
         print(f"=== TAQUIN {i} ===")
@@ -194,10 +195,18 @@ def main():
             print(f"=> Réduction du nombre de nœuds : {gain:.1f}%\n")
             gains_noeuds.append(gain)  
 
+            # On stocke les valeurs pour le graphique
+            h_initial = heuristique_manhattan(initial)
+            valeurs_manhattan.append((h_initial, len(chemin2)))
+
     # Calcul et affichage du gain moyen 
     if gains_noeuds:
         gain_moyen = sum(gains_noeuds) / len(gains_noeuds)
         print(f"Gain moyen du nombre de nœuds explorés : {gain_moyen:.1f}%\n")
+
+    # Tracé du graphique illustrant la relation heuristique de Manhattan / distance réelle
+    if valeurs_manhattan:
+        tracer_graphe_moyen(valeurs_manhattan, "Heuristique (distance de Manhattan)", "Nombre moyen de coups restants (distance moyenne restante)")
 
     print("Comparaison terminée pour tous les taquins.\n")
 
