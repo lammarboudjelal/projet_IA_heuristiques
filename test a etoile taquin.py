@@ -1,6 +1,7 @@
 from heapq import heappush, heappop
 import matplotlib.pyplot as plt
 from collections import defaultdict
+import time
 
 # --- Configuration du taquin ---
 ETAT_OBJECTIF = (
@@ -241,19 +242,37 @@ def main():
     facteur_optimal = 1.3
 
     # --- Résolution avec l'heuristique de Manhattan amplifiée ---
-    valeurs_manhattan_modifiee = []
-    for initial in taquins:
-        chemin, _, _, _ = a_etoile(initial, lambda etat: heuristique_manhattan_modifiee(etat, facteur_optimal))
-        if chemin is not None:   
-            h_initial = heuristique_manhattan_modifiee(initial, facteur_optimal)
-            valeurs_manhattan_modifiee.append((h_initial, len(chemin)))
+    temps_classique = []
+    temps_amplifie = []
 
-    # --- Tracé du graphique ---
-    tracer_graphe_moyen(
-        valeurs_manhattan_modifiee,
-        "Heuristique (distance de Manhattan amplifiée)",
-        "Nombre de coups pour la solution"
-    )
+    valeurs_manhattan_modifiee = []
+
+    for initial in taquins:
+        # --- Temps pour heuristique classique ---
+        t0 = time.time()
+        chemin_ref, _, _, _ = a_etoile(initial, heuristique_manhattan)
+        t1 = time.time()
+        if chemin_ref is not None:
+            temps_classique.append(t1 - t0)
+
+        # --- Temps pour heuristique amplifiée ---
+        t0 = time.time()
+        chemin_mod, _, _, _ = a_etoile(initial, lambda etat: heuristique_manhattan_modifiee(etat, facteur_optimal))
+        t1 = time.time()
+        if chemin_mod is not None:
+            temps_amplifie.append(t1 - t0)
+            h_initial = heuristique_manhattan_modifiee(initial, facteur_optimal)
+            valeurs_manhattan_modifiee.append((h_initial, len(chemin_mod)))
+    
+    # --- Moyenne des temps ---
+    if temps_classique and temps_amplifie:
+        t_classique_moyen = sum(temps_classique) / len(temps_classique)
+        t_amplifie_moyen = sum(temps_amplifie) / len(temps_amplifie)
+        gain_temps = (t_classique_moyen - t_amplifie_moyen) / t_classique_moyen * 100
+
+        print(f"\nTemps moyen heuristique classique : {t_classique_moyen:.4f} s")
+        print(f"Temps moyen heuristique amplifiée : {t_amplifie_moyen:.4f} s")
+        print(f"Gain moyen de temps : {gain_temps:.1f}%\n")
 
     print("Test terminé avec l'heuristique de Manhattan amplifiée.")
 
