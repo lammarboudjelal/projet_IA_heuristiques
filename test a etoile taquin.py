@@ -80,6 +80,19 @@ def heuristique_manhattan(etat):
                 distance += abs(x - goal_x) + abs(y - goal_y)
     return distance
 
+def heuristique_manhattan_modifiee(etat) :
+    """
+    Heuristique 2 modifiée : distance de Manhattan légèrement amplifiée
+    pour accélérer la recherche lorsque la solution est encore éloignée.
+    """
+    distance = heuristique_manhattan(etat)
+
+    # Si le nombre de coups restants estimé est important, on amplifie légèrement.
+    # Lorsqu'il reste moins de 5 coups à jouer, on conserve la valeur originale pour préserver la précision.
+    if distance >= 5:
+        distance *= 1.1  
+    return distance
+
 
 def afficher_taquin(etat):
     """Affiche joliment un état du taquin."""
@@ -164,49 +177,49 @@ def a_etoile(initial, heuristique_fct): # On fait passer la fonction de l'heuris
 
 
 def main():    
-    # --- Comparaison des deux heuristiques ---
+    # --- Comparaison des deux versions de l'heuristique de manhattan ---
     nom_fichier = "taquins.txt"
     taquins = lire_fichier_taquins(nom_fichier)
     print(f"{len(taquins)} taquin(s) chargé(s) depuis le fichier {nom_fichier}\n")
 
     gains_noeuds = [] # Liste pour stocker le gain de chaque taquin
-    valeurs_manhattan = []  # Pour tracer le graphique (h, distance réelle)
+    valeurs_manhattan_modifiee = []  # Pour tracer le graphique (h, distance réelle)
 
     for i, initial in enumerate(taquins, 1):
         print(f"=== TAQUIN {i} ===")
         afficher_taquin(initial)
 
-        # Résolution avec l’heuristique des tuiles mal placées
-        chemin1, final1, open1, visited1 = a_etoile(initial, heuristique)
-        noeuds1 = open1 + visited1 # nombre de nœuds explorés avec l’heuristique des tuiles mal placées
+        # Résolution avec l’heuristique de manhattan
+        chemin1, final1, open1, visited1 = a_etoile(initial, heuristique_manhattan)
+        noeuds1 = open1 + visited1 # nombre de nœuds explorés avec la distance de Manhattan originale
 
-        # Résolution avec la distance de Manhattan
-        chemin2, final2, open2, visited2 = a_etoile(initial, heuristique_manhattan)
-        noeuds2 = open2 + visited2 # nombre de nœuds explorés avec la distance de Manhattan
+        # Résolution avec l’heuristique de manhattan modifiée (amplification légère)
+        chemin2, final2, open2, visited2 = a_etoile(initial, heuristique_manhattan_modifiee)
+        noeuds2 = open2 + visited2 # nombre de nœuds explorés avec la distance de Manhattan modifiée/amplifiée
 
         if chemin1 is None or chemin2 is None : 
             print("Aucune solution trouvée.")
         else :
             print("\nRésultats comparés :")
-            print(f"  - Tuiles mal placées : {len(chemin1)} coups, {noeuds1} nœuds explorés")
-            print(f"  - Distance Manhattan : {len(chemin2)} coups, {noeuds2} nœuds explorés")
+            print(f"  - Distance Manhattan originale : {len(chemin1)} coups, {noeuds1} nœuds explorés")
+            print(f"  - Distance Manhattan amplifiée : {len(chemin2)} coups, {noeuds2} nœuds explorés")
             
             gain = ((noeuds1 - noeuds2) / noeuds1) * 100
             print(f"=> Réduction du nombre de nœuds : {gain:.1f}%\n")
             gains_noeuds.append(gain)  
 
             # On stocke les valeurs pour le graphique
-            h_initial = heuristique_manhattan(initial)
-            valeurs_manhattan.append((h_initial, len(chemin2)))
+            h_initial = heuristique_manhattan_modifiee(initial)
+            valeurs_manhattan_modifiee.append((h_initial, len(chemin2)))
 
     # Calcul et affichage du gain moyen 
     if gains_noeuds:
         gain_moyen = sum(gains_noeuds) / len(gains_noeuds)
         print(f"Gain moyen du nombre de nœuds explorés : {gain_moyen:.1f}%\n")
 
-    # Tracé du graphique illustrant la relation heuristique de Manhattan / distance réelle
-    if valeurs_manhattan:
-        tracer_graphe_moyen(valeurs_manhattan, "Heuristique (distance de Manhattan)", "Nombre moyen de coups restants (distance moyenne restante)")
+    # Tracé du graphique illustrant la relation heuristique de Manhattan modifiée / distance réelle
+    if valeurs_manhattan_modifiee:
+        tracer_graphe_moyen(valeurs_manhattan_modifiee, "Heuristique (distance de Manhattan modifiée/amplifiée)", "Nombre moyen de coups restants (distance moyenne restante)")
 
     print("Comparaison terminée pour tous les taquins.\n")
 
