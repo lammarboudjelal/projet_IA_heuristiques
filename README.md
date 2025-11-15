@@ -1,5 +1,12 @@
 # Projet du module "Bases de l’I.A." 2025 - 2026 
 
+## Auteurs 
+
+- Lina AMMAR-BOUDJELAL
+- Flore ADVENIER
+
+Promotion 2027 - Groupe 1
+
 ## Contexte du projet
 
 Ce projet s’inscrit dans le cadre du module *Bases de l’Intelligence Artificielle*.  
@@ -16,7 +23,7 @@ Le projet se décompose en quatre étapes principales (quatre questions):
 
 Un rapport détaillé accompagne le code et présente les résultats, graphiques et interprétations obtenus.
 
-## Code initial fourni 
+## Code initial fourni (code_initial.py)
 
 Le code initial fourni implémente l’algorithme **A\*** pour résoudre un taquin 3×3.  
 Il utilise comme heuristique le **nombre de tuiles mal placées** (c’est-à-dire le nombre de cases qui ne sont pas à leur position finale).
@@ -27,7 +34,7 @@ Afin de tester le programme initiale :
 
 > 2. Lance le script principal :  
 ```
-python3 test\ a\ etoile\ taquin.py 
+python3 code_initial.py 
 ```
 
 > 3. Saisir le taquin ligne par ligne (avec un espace entre chaque nombre).
@@ -168,9 +175,22 @@ Nombre final d'états dans open : 7169
 Nombre d'états visités : 13023
 ```
 
-## Auteurs 
+## Fonctionnalités du code final (resolution_taquins_taille_quelconque.py)
 
-- Lina AMMAR-BOUDJELAL
-- Flore ADVENIER
+Le code final permet :
+- De résoudre des taquins de taille 3×3 et 5×5.
+- D’utiliser différentes heuristiques :
+  - nombre de tuiles mal placées,
+  - distance de Manhattan classique,
+  - distance de Manhattan modifiée avec facteur multiplicateur pour accélérer la recherche.
+- De comparer A* et IDA* sur des taquins de difficultés croissantes.
+- De générer automatiquement des taquins solvables avec un nombre de coups aléatoires pour créer des niveaux simple, intermédiaire - et difficile.
+- De tracer des graphiques représentant le lien entre la valeur de l’heuristique et la distance réelle moyenne vers la solution.
 
-Promotion 2027 - Groupe 1
+## Limitations
+
+Les taquins difficiles (beaucoup de coups aléatoires) peuvent demander beaucoup de temps de calcul pour IDA*, et A* peut rapidement consommer une grande quantité de mémoire.
+
+La génération aléatoire implique que les résultats changent légèrement à chaque exécution.
+
+Pour des taquins plus grands que 5×5, des heuristiques plus avancées ou des optimisations supplémentaires seraient nécessaires.
