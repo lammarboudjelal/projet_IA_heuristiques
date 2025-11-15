@@ -2,12 +2,22 @@ from heapq import heappush, heappop
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import time
+import random
 
-# --- Configuration du taquin ---
-ETAT_OBJECTIF = (
+# --- Configuration des taquins ---
+
+ETAT_OBJECTIF_3 = (
     (1, 2, 3),
     (4, 5, 6),
     (7, 8, 0)
+)
+
+ETAT_OBJECTIF_5 = (
+    (1, 2, 3, 4, 5),
+    (6, 7, 8, 9, 10),
+    (11, 12, 13, 14, 15),
+    (16, 17, 18, 19, 20),
+    (21, 22, 23, 24, 0)
 )
 
 DEPLACEMENTS = {
@@ -17,76 +27,90 @@ DEPLACEMENTS = {
     'Droite': (0, 1)
 }
 
+DEPLACEMENTS_INVERSES = {
+    'Haut': 'Bas',
+    'Bas': 'Haut',
+    'Gauche': 'Droite',
+    'Droite': 'Gauche'
+}
+
 # --- Fonctions utilitaires ---
 
 def lire_taquin():
-    print("Entrez le taquin initial ligne par ligne (avec 0 pour la case vide) :")
+    print("Entrez la taille n du taquin (3 pour 3x3, 5 pour 5x5) : ")
+    n = int(input())
+
+    print(f"Entrez le taquin initial {n}x{n} ligne par ligne (0 = case vide) :")
+
     etat = []
-    for i in range(3):
+    for i in range(n):
         ligne = list(map(int, input().split()))
         etat.append(tuple(ligne))
     return tuple(etat)
 
 
 def trouver_vide(etat):
-    for i in range(3):
-        for j in range(3):
+    n = len(etat)
+    for i in range(n):
+        for j in range(n):
             if etat[i][j] == 0:
                 return i, j
 
 
-def trouver_coordonnee(valeur):
+def trouver_coordonnee_generale(valeur, objectif):
     """Retourne la position finale d’une tuile donnée dans l’état objectif."""
-    for i in range(3):
-        for j in range(3):
-            if ETAT_OBJECTIF[i][j] == valeur:
-                return i, j
-            
+    for i in range(len(objectif)):
+        for j in range(len(objectif[0])):
+            if objectif[i][j] == valeur:
+                return i, j  
 
-def deplacements_possibles(etat):
+
+def deplacements_possibles_generaux(etat):
     """Retourne la liste des déplacements possibles à partir d'un état donné."""
-    x, y = trouver_vide(etat)
-    deplacements = []
+    n = len(etat)
+    x, y = next((i, j) for i in range(n) for j in range(n) if etat[i][j] == 0)
 
+    deplacements = []
     for move, (dx, dy) in DEPLACEMENTS.items():
         nx, ny = x + dx, y + dy
-        if 0 <= nx < 3 and 0 <= ny < 3:
+        if 0 <= nx < n and 0 <= ny < n:
             new_state = [list(row) for row in etat]
-            # Échange de la case vide avec la case cible
             new_state[x][y], new_state[nx][ny] = new_state[nx][ny], new_state[x][y]
             new_state_tuple = tuple(tuple(row) for row in new_state)
             deplacements.append((move, new_state_tuple))
-
     return deplacements
 
 
-def heuristique(etat):
+def heuristique(etat, objectif):
     """Heuristique : compte le nombre de tuiles mal placées."""
     mal_places = 0
-    for i in range(3):
-        for j in range(3):
-            if etat[i][j] != 0 and etat[i][j] != ETAT_OBJECTIF[i][j]:
+    n = len(etat)
+    for i in range(n):
+        for j in range(n):
+            if etat[i][j] != 0 and etat[i][j] != objectif[i][j]:
                 mal_places += 1
     return mal_places
 
 
-def heuristique_manhattan(etat):
+def heuristique_manhattan_generale(etat, objectif):
     """Heuristique 2 : somme des distances de Manhattan."""
     distance = 0
-    for x in range(len(etat)):
-        for y in range(len(etat[x])):
+    n = len(etat)
+    for x in range(n):
+        for y in range(n):
             valeur = etat[x][y]
             if valeur != 0:
-                (goal_x, goal_y) = trouver_coordonnee(valeur)
+                (goal_x, goal_y) = trouver_coordonnee_generale(valeur, objectif)
                 distance += abs(x - goal_x) + abs(y - goal_y)
     return distance
 
-def heuristique_manhattan_modifiee(etat, facteur) :
+
+def heuristique_manhattan_modifiee(etat, facteur, objectif) :
     """
     Heuristique 2 modifiée : distance de Manhattan amplifiée par un facteur entre 1 et 2
     pour accélérer la recherche lorsque la solution est encore éloignée.
     """
-    distance = heuristique_manhattan(etat)
+    distance = heuristique_manhattan_generale(etat, objectif)
 
     # Si le nombre de coups restants estimé est important, on amplifie.
     # Lorsqu'il reste moins de 5 coups à jouer, on conserve la valeur originale pour préserver la précision.
@@ -97,7 +121,8 @@ def heuristique_manhattan_modifiee(etat, facteur) :
 
 def afficher_taquin(etat):
     """Affiche joliment un état du taquin."""
-    for i in range(3):
+    n = len(etat)
+    for i in range(n):
         ligne = ' '.join(str(x) if x != 0 else ' ' for x in etat[i])
         print(ligne)
     print("-------")
@@ -150,7 +175,8 @@ def tracer_graphe_moyen(valeurs, x_label, y_label):
     plt.grid(True)
     plt.show()  
 
-def trouver_facteur_optimal(taquins):
+
+def trouver_facteur_optimal(taquins, objectif):
     """
     Cherche le plus grand facteur multiplicateur de la distance de Manhattan qui conserve au moins 90%
     de solutions optimales (nombre minimal de coups) et affiche les résultats à chaque test.
@@ -168,13 +194,13 @@ def trouver_facteur_optimal(taquins):
 
         for initial in taquins:
             # Résolution avec heuristique classique
-            chemin_ref, _, open_ref, visited_ref = a_etoile(initial, heuristique_manhattan)
+            chemin_ref, _, open_ref, visited_ref = a_etoile(initial, objectif, heuristique_manhattan_generale)
             noeuds_ref = open_ref + visited_ref
 
             # Résolution avec heuristique amplifiée
             chemin_mod, _, open_mod, visited_mod = a_etoile(
                 initial, 
-                lambda etat: heuristique_manhattan_modifiee(etat, facteur)
+                lambda etat: heuristique_manhattan_modifiee(etat, facteur, objectif)
             )
             noeuds_mod = open_mod + visited_mod
 
@@ -205,17 +231,18 @@ def trouver_facteur_optimal(taquins):
     print(f"Facteur optimal retenu : {facteur_optimal:.2f} (Gain moyen {meilleur_gain:.1f}%)\n")
     return facteur_optimal
 
+
 # --- Algorithme A* ---
 
-def a_etoile(initial, heuristique_fct): # On fait passer la fonction de l'heuristique utilisée en paramètre
+def a_etoile(initial, objectif, heuristique_fct): # On fait passer la fonction de l'heuristique utilisée en paramètre
     open_set = []
-    heappush(open_set, (heuristique_fct(initial), 0, initial, []))
+    heappush(open_set, (heuristique_fct(initial, objectif), 0, initial, []))
     visited = set()
 
     while open_set:
         f, g, etat, chemin = heappop(open_set)
 
-        if etat == ETAT_OBJECTIF:
+        if etat == objectif:
             return chemin, etat, len(open_set), len(visited)
 
         if etat in visited:
@@ -223,58 +250,134 @@ def a_etoile(initial, heuristique_fct): # On fait passer la fonction de l'heuris
 
         visited.add(etat)
 
-        for move, next_state in deplacements_possibles(etat):
+        for move, next_state in deplacements_possibles_generaux(etat):
             if next_state not in visited:
                 new_g = g + 1
-                h = heuristique_fct(next_state)
+                h = heuristique_fct(next_state, objectif)
                 heappush(open_set, (new_g + h, new_g, next_state, chemin + [(move, next_state)]))
 
     return None, None, 0, len(visited)
 
 
+# --- Algorithme IDA* ---
+
+def ida_star(initial, objectif, heuristique_fct):
+    """
+    Implémentation de l’algorithme IDA* :
+    - profondeur limitée progressive
+    - fonction de coût f = g + h
+    - exploration en profondeur guidée par l’heuristique
+    """
+    seuil = heuristique_fct(initial, objectif) # seuil initial = heuristique du départ
+    expansions = 0
+
+    def recherche(etat, g, seuil, chemin, last_move):
+        nonlocal expansions
+        expansions += 1
+
+        f = g + heuristique_fct(etat, objectif)
+        if f > seuil: # dépassement du seuil : retourne f minimal dépassé
+            return f, None
+        if etat == objectif: # état objectif atteint
+            return f, chemin
+
+        min_seuil = float("inf")
+
+        for move, new_state in deplacements_possibles_generaux(etat):
+            # évite le retour immédiat sur le dernier move
+            if last_move is not None and move == DEPLACEMENTS_INVERSES.get(last_move):
+                continue
+            # évite les cycles déjà présents dans le chemin
+            already_in_path = any(new_state == s for (_, s) in chemin)
+            if already_in_path:
+                continue
+
+            # exploration récursive
+            new_f, sol = recherche(new_state, g + 1, seuil, chemin + [(move, new_state)], move)
+            if sol is not None:
+                return new_f, sol
+            if new_f < min_seuil:
+                min_seuil = new_f
+
+        return min_seuil, None
+
+    # boucle d'approfondissement : augmente progressivement le seuil
+    while True:
+        nouveau_seuil, solution = recherche(initial, 0, seuil, [], None)
+        if solution is not None:
+            return solution, expansions
+        if nouveau_seuil == float("inf"):
+            return None, expansions
+        seuil = nouveau_seuil
+
+
+# --- Tests : 3 taquins 5x5 pour comparaison ---
+
+def generer_taquin(n, coups):
+    """
+    Génère un taquin nxn solvable en effectuant un nombre donné de coups aléatoires à partir de l'état objectif.
+    """
+    etat = [list(range(i*n+1, (i+1)*n+1)) for i in range(n)]
+    etat[-1][-1] = 0  # case vide
+    x, y = n-1, n-1
+
+    dernier_move = None
+    for _ in range(coups):
+        moves_possibles = []
+        for move, (dx, dy) in DEPLACEMENTS.items():
+            if dernier_move is not None and DEPLACEMENTS_INVERSES[dernier_move] == move:
+                continue
+            nx, ny = x+dx, y+dy
+            if 0 <= nx < n and 0 <= ny < n:
+                moves_possibles.append((move, nx, ny))
+        move, nx, ny = random.choice(moves_possibles)
+        etat[x][y], etat[nx][ny] = etat[nx][ny], etat[x][y]
+        x, y = nx, ny
+        dernier_move = move
+    return tuple(tuple(row) for row in etat)
+
+taquin_5x5_simple = generer_taquin(5, 10)
+taquin_5x5_intermediaire = generer_taquin(5, 60)
+taquin_5x5_difficile = generer_taquin(5, 80)
+
+
 def main():    
-    nom_fichier = "taquins.txt"
-    taquins = lire_fichier_taquins(nom_fichier)
-    print(f"{len(taquins)} taquin(s) chargé(s) depuis le fichier {nom_fichier}\n")
+    print("=== Tests comparatifs A* vs IDA* (5x5) ===")
 
-    # --- Recherche du facteur optimal ---
-    # facteur_optimal = trouver_facteur_optimal(taquins)
-    facteur_optimal = 1.3
+    tests = [
+        ("Simple", taquin_5x5_simple),
+        ("Intermédiaire", taquin_5x5_intermediaire),
+        ("Difficile", taquin_5x5_difficile),
+    ]
 
-    # --- Résolution avec l'heuristique de Manhattan amplifiée ---
-    temps_classique = []
-    temps_amplifie = []
+    for nom, etat in tests:
+        print(f"\n--- {nom} ---")
+        afficher_taquin(etat)
 
-    valeurs_manhattan_modifiee = []
-
-    for initial in taquins:
-        # --- Temps pour heuristique classique ---
+        # --- IDA* avec heuristique Manhattan standard ---
         t0 = time.time()
-        chemin_ref, _, _, _ = a_etoile(initial, heuristique_manhattan)
+        (chemin_i, expansions_i) = ida_star(etat, ETAT_OBJECTIF_5, heuristique_manhattan_generale)
         t1 = time.time()
-        if chemin_ref is not None:
-            temps_classique.append(t1 - t0)
+        duree_i = t1 - t0
 
-        # --- Temps pour heuristique amplifiée ---
+        if chemin_i is None:
+            print(f"IDA* : aucune solution trouvée (après {expansions_i} expansions). temps = {duree_i:.4f} s")
+        else:
+            print(f"IDA* : solution en {len(chemin_i)} coups, temps = {duree_i:.4f} s, expansions = {expansions_i}")
+
+        # --- A* avec heuristique Manhattan standard ---
         t0 = time.time()
-        chemin_mod, _, _, _ = a_etoile(initial, lambda etat: heuristique_manhattan_modifiee(etat, facteur_optimal))
+        chemin_a, _, open_len_a, visited_len_a = a_etoile(etat, ETAT_OBJECTIF_5, heuristique_manhattan_generale)
         t1 = time.time()
-        if chemin_mod is not None:
-            temps_amplifie.append(t1 - t0)
-            h_initial = heuristique_manhattan_modifiee(initial, facteur_optimal)
-            valeurs_manhattan_modifiee.append((h_initial, len(chemin_mod)))
-    
-    # --- Moyenne des temps ---
-    if temps_classique and temps_amplifie:
-        t_classique_moyen = sum(temps_classique) / len(temps_classique)
-        t_amplifie_moyen = sum(temps_amplifie) / len(temps_amplifie)
-        gain_temps = (t_classique_moyen - t_amplifie_moyen) / t_classique_moyen * 100
+        duree_a = t1 - t0
 
-        print(f"\nTemps moyen heuristique classique : {t_classique_moyen:.4f} s")
-        print(f"Temps moyen heuristique amplifiée : {t_amplifie_moyen:.4f} s")
-        print(f"Gain moyen de temps : {gain_temps:.1f}%\n")
+        if chemin_a is None:
+            print("A* : aucune solution trouvée (ou mémoire insuffisante).")
+        else:
+            print(f"A* : solution en {len(chemin_a)} coups, temps = {duree_a:.4f} s, open={open_len_a}, visited={visited_len_a}")
 
-    print("Test terminé avec l'heuristique de Manhattan amplifiée.")
+    print("\nTests terminés.")
 
 if __name__ == "__main__":
     main()
+
